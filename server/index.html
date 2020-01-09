@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <style>
+        html, body { height: 100%; padding: 0; margin: 0; }
+        div { width: 50%; height: 50%; float: left; }
+    </style>
+    <meta name="viewport" content="initial-scale=1.0">
+    <meta charset="utf-8">
+    <style>
+        /* Always set the map height explicitly to define the size of the div
+       * element that contains the map. */
+        #map {
+            height: 50%;
+        }
+
+        /* Optional: Makes the sample page fill the window. */
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="movement_div" >
+        <button id="F_Button" style="width: 50%;height: 50%;font-size: 20px" > Forward </button>
+        <button id="B_Button" style="width: 49%;height: 50%;font-size: 20px"> Backward </button>
+        <br>
+        <button id="L_Button" style="width: 50%;height: 50%;font-size: 20px"> Left </button>
+        <button id="R_Button" style="width: 49%;height: 50%;font-size: 20px"> Right </button>
+    </div>
+
+    <div id="video_stream_div">
+        <img id="image" alt="Video Stream" src="" width="100%" height="100%">        
+    </div>
+
+    <div id="speed_div">
+        <h1 id="speed"> Speed : 0 </h1>
+        <h1 id="temperature"> Temperature : 0 </h1>
+        <h1 id="error_mode_tag"> Error Mode : Off </h1>
+        <h1 id="error_mode_message_tag"> Message : none </h1>
+    </div>
+    
+    <script src="/jquery/dist/jquery.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    
+    <div id="map"></div>
+    <script async defer
+        src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAU73yWNVbCetKItCDWctusFi3_OROKEiU&callback=initMap"
+        type="text/javascript"></script>
+    <script>
+        var map;
+        var marker;
+        function initMap() {
+            myLatLng = { lat: 30.0444, lng: 31.2357 }
+            map = new google.maps.Map(document.getElementById('map'), {
+                center: myLatLng,
+                zoom: 18
+            });
+
+            marker = new google.maps.Marker({
+                map: map,
+                draggable: false,
+                animation: google.maps.Animation.DROP,
+                position: myLatLng
+            });
+        }
+    </script>
+</body>
+
+</html>
+
+
+<script>
+    var socket = io.connect('http://localhost:4200');
+    socket.on('connect', function (client) {
+        var errorMode = false;
+
+        console.log("Connected")
+        socket.on('state', function (data) {
+            console.log("State ", data)
+            errorMode = data["error_mode"]
+            setErrorTag()
+        })
+
+        socket.on('location', function (data) {
+            console.log("Coords: ", data)
+            map.setCenter(new google.maps.LatLng(data["lat"], data["lon"]));
+            marker.setPosition(new google.maps.LatLng(data["lat"], data["lon"]))
+        })
+        var speed = document.getElementById('speed')
+        socket.on('speed', function (data) {
+            speed.innerText = "Speed : " + data
+        })
+        var image_tag = document.getElementById('image')
+        socket.on('video', function (data) {
+            // console.log("data : ", data.toString("base64"));
+                image_tag.setAttribute(
+                    'src', 'data:image/png;base64,' + atob(data.toString("base64")
+                )
+            );
+        })
+
+        document.getElementById("F_Button").addEventListener("click", function () {
+            if (errorMode) {
+                console.log("F")
+                socket.emit('movement', "F")
+            } else {
+                console.log("Error mode needs to be ON")
+            }
+        })
+        document.getElementById("B_Button").addEventListener("click", function () {
+            if (errorMode) {
+                console.log("B")
+                socket.emit('movement', "B")
+            } else {
+                console.log("Error mode needs to be ON")
+            }
+        })
+        document.getElementById("R_Button").addEventListener("click", function () {
+            if (errorMode) {
+                console.log("R")
+                socket.emit('movement', "R")
+            } else {
+                console.log("Error mode needs to be ON")
+            }
+        })
+        document.getElementById("L_Button").addEventListener("click", function () {
+            if (errorMode) {
+                console.log("L")
+                socket.emit('movement', "L")    
+            } else {
+                console.log("Error mode needs to be ON")
+            }
+            
+        })
+
+        socket.on('clienterror', function (data) {
+            console.log(data)
+            errorMode = data
+            setErrorTag()
+        })
+
+        function setErrorTag() {
+            errorModeElement = document.getElementById('error_mode_tag');
+            if (errorMode) {
+                errorModeElement.innerText = "Error Mode : On"
+                errorModeElement.style = "color: red"
+            } else {
+                errorModeElement.innerText = "Error Mode : Off"
+                errorModeElement.style = "color: black"
+            }
+        }
+    });
+
+</script>
